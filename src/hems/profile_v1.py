@@ -116,7 +116,7 @@ def from_tariff_profile(doc: dict) -> dict:
         if not isinstance(f, dict) or not isinstance(f.get("rate"), (int, float)):
             continue
         basis, k = _FIXED.get(f.get("frequency") or "daily", ("per_day", 1.0))
-        charges.append({"id": f"fixed_{i + 1}", "label": f.get("description") or f.get("type") or "Fixed charge",
+        charges.append({"id": f"fixed_{i + 1}", "label": f.get("description") or (f.get("type") or "fixed charge").replace("_", " ").capitalize(),
                         "class": "period", "basis": basis,
                         "rate": round(float(f["rate"]) * k * (1 + float(f.get("tax_rate") or 0.0)), 6),
                         "unit": basis.removeprefix("per_")})

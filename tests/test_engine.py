@@ -63,6 +63,17 @@ def test_ledger_sums_devices_and_closes_five_minute_intervals():
     assert closed[0]["peak_rate"] == pytest.approx(3.0, abs=0.03)
 
 
+def test_the_open_interval_is_returned_so_far_and_stays_open():
+    st = ledger.new_state("m1")
+    t0 = 1_700_000_100                                    # 100 s into an interval
+    for i in range(0, 121, 10):
+        ledger.add_reading(st, "a", t0 + i, 3600.0)       # 3.6 kW for 120 s = 0.12 kWh
+    iv = ledger.open_interval(st)
+    assert iv["quantity_in"] == pytest.approx(0.12) and iv["source"] == "estimated"
+    assert st["open"] is not None                         # still accruing
+    assert ledger.open_interval(ledger.new_state("m2")) is None
+
+
 def test_ledger_leaves_out_a_silent_device_and_records_export():
     st = ledger.new_state("m1")
     t0 = loc(2026, 11, 16, 12, 0).timestamp()
@@ -251,3 +262,12 @@ def test_setup_steps_in_order():
     assert s[2]["blocked"] is False and s[3]["blocked"] is True
     s = setup.steps([{"id": "s1"}], [{"id": "m1"}], [AU], "m1", today)
     assert setup.complete(s) and s[2]["detail"] == AU["name"]
+
+
+def test_a_fixed_charge_without_a_description_is_named_from_its_type():
+    doc = {"type": "franklinwh-bridge/tariff-profile", "version": 1, "profile": {
+        "name": "T", "country": "AU", "pricing": {"default_rate": {"buy": 0.3, "sell": 0.05},
+        "fixed_charges": [{"type": "supply", "frequency": "daily", "rate": 1.1},
+                          {"type": "metering_fee", "frequency": "daily", "rate": 0.2}]}}}
+    labels = [c["label"] for c in profile_v1.from_tariff_profile(doc)["charges"]]
+    assert labels == ["Supply", "Metering fee"]

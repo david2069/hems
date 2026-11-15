@@ -71,6 +71,13 @@ def add_reading(state: dict, device_id: str, ts: float, grid_w: float | None) ->
     return closed
 
 
+def open_interval(state: dict) -> dict | None:
+    """The interval still open (the current one, so far) as a usage interval, or None. A
+    provisional bill includes it; it stays open and keeps accruing."""
+    cur = state.get("open")
+    return _finish(cur) if cur is not None and cur["seconds"] > 0 else None
+
+
 def _finish(cur: dict) -> dict:
     out = {k: v for k, v in cur.items() if k != "seconds"}
     out["quantity_in"] = round(out["quantity_in"], 6)
