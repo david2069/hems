@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-11-15
+
+### Fixed
+- Rates in bill formulas read `$0.30`, `$1.10`, not `$0.3`, `$1.1` (two to four decimals).
+
 ## [0.1.1] — 2026-11-15
 
 ### Added

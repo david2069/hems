@@ -99,6 +99,13 @@ def _fmt(v: float, dp: int = 2) -> str:
     return f"{v:,.{dp}f}"
 
 
+def _rate(v: float) -> str:
+    """A rate in a formula: two decimals at least, up to four (0.3 → 0.30, 0.2456 → 0.2456)."""
+    whole, _, frac = f"{float(v):.4f}".partition(".")
+    frac = frac.rstrip("0").ljust(2, "0")
+    return f"{int(whole):,}.{frac}" if not whole.startswith("-") else f"-{abs(int(whole)):,}.{frac}"
+
+
 def _tariffs(plan: dict) -> list[dict]:
     return [t for t in plan.get("tariffs") or [] if isinstance(t, dict)]
 
@@ -142,7 +149,7 @@ def _interval_lines(plan: dict, ledger: dict[str, list[dict]], tz: ZoneInfo,
             unit = c.get("unit") or "kWh"
             one_rate = next(iter(rates_seen)) if len(rates_seen) == 1 else None
             if one_rate is not None:
-                formula = f"{_fmt(qty, 3)} {unit} × ${one_rate}"
+                formula = f"{_fmt(qty, 3)} {unit} × ${_rate(one_rate)}"
             else:
                 what = "prices" if c["basis"] != "per_unit" else "TOU rates"
                 formula = f"{_fmt(qty, 3)} {unit} × {what} ({n:,} intervals)"
@@ -226,15 +233,15 @@ def _period_lines(plan: dict, ledger: dict[str, list[dict]], tz: ZoneInfo, start
         if basis == "per_day":
             lines.append({**base, "quantity": round(used_days, 3), "unit": "day", "rate": rate,
                           "amount": _money(_sign(c) * rate * used_days),
-                          "formula": f"{_fmt(used_days, 0 if used_days == int(used_days) else 2)} days × ${rate}"})
+                          "formula": f"{_fmt(used_days, 0 if used_days == int(used_days) else 2)} days × ${_rate(rate)}"})
         elif basis == "per_month":
             q = months * frac
             lines.append({**base, "quantity": round(q, 4), "unit": "month", "rate": rate,
-                          "amount": _money(_sign(c) * rate * q), "formula": f"{_fmt(q, 2)} months × ${rate}"})
+                          "amount": _money(_sign(c) * rate * q), "formula": f"{_fmt(q, 2)} months × ${_rate(rate)}"})
         elif basis == "per_year":
             q = used_days / 365.0
             lines.append({**base, "quantity": round(q, 4), "unit": "year", "rate": rate,
-                          "amount": _money(_sign(c) * rate * q), "formula": f"{used_days:g}/365 years × ${rate}"})
+                          "amount": _money(_sign(c) * rate * q), "formula": f"{used_days:g}/365 years × ${_rate(rate)}"})
         elif basis == "demand":
             spec = c.get("demand") or {}
             method = spec.get("method") or "monthly_max"
@@ -251,7 +258,7 @@ def _period_lines(plan: dict, ledger: dict[str, list[dict]], tz: ZoneInfo, start
             when = f" ({_local_short(at)})" if at else ""
             lines.append({**base, "quantity": round(peak, 3), "unit": unit, "rate": rate,
                           "amount": _money(_sign(c) * peak * rate * mult),
-                          "formula": f"peak {_fmt(peak, 2)} {unit}{when} × ${rate}{how}", "inputs": inputs})
+                          "formula": f"peak {_fmt(peak, 2)} {unit}{when} × ${_rate(rate)}{how}", "inputs": inputs})
         elif basis == "excess_over_free_band":
             fb = c.get("free_band") or {}
             free = float(fb.get("quantity") or 0.0)
@@ -273,7 +280,7 @@ def _period_lines(plan: dict, ledger: dict[str, list[dict]], tz: ZoneInfo, start
                 desc = f"{_fmt(allow, 1)} kWh free"
             lines.append({**base, "quantity": round(excess, 3), "unit": c.get("unit") or "kWh",
                           "rate": rate, "amount": _money(_sign(c) * excess * rate),
-                          "formula": f"{_fmt(excess, 3)} kWh above {desc} × ${rate}",
+                          "formula": f"{_fmt(excess, 3)} kWh above {desc} × ${_rate(rate)}",
                           "inputs": {"in_window": round(total, 3), "free_left": round(left, 3)}})
         elif basis == "tier":
             used = sum(_qty(iv, _direction(t or {}, c)) for iv in chan)
@@ -304,7 +311,7 @@ def _tier(c: dict, used: float, start: dt.datetime, used_days: float) -> dict:
         span = left if cap is None else max(0.0, min(left, float(cap) - prev))
         if span > 0:
             amount += span * float(tier["rate"])
-            parts.append(f"{_fmt(span, 1)} × ${tier['rate']}")
+            parts.append(f"{_fmt(span, 1)} × ${_rate(tier['rate'])}")
         left -= span
         if cap is not None:
             prev = float(cap)

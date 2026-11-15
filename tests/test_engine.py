@@ -124,7 +124,7 @@ def test_au_bill_line_items_and_formulas():
     assert _line(b, "fit")["amount"] == pytest.approx(-round(21 * 0.05, 2))
     x = _line(b, "export_charge")
     assert x["quantity"] == pytest.approx(5.0) and x["amount"] == pytest.approx(round(5 * 0.012, 2))
-    assert _line(b, "supply")["formula"] == "30 days × $1.1"
+    assert _line(b, "supply")["formula"] == "30 days × $1.10"
     assert b["net_total"] == pytest.approx(round(sum(i["amount"] for i in b["line_items"]), 2))
     assert b["tax"] == pytest.approx(round(b["net_total"] / 11, 2))
 
@@ -271,3 +271,8 @@ def test_a_fixed_charge_without_a_description_is_named_from_its_type():
                           {"type": "metering_fee", "frequency": "daily", "rate": 0.2}]}}}
     labels = [c["label"] for c in profile_v1.from_tariff_profile(doc)["charges"]]
     assert labels == ["Supply", "Metering fee"]
+
+
+def test_rates_in_formulas_have_two_to_four_decimals():
+    assert [billing._rate(v) for v in (0.3, 1.1, 0.2456, 12.5, 1234.5)] == \
+        ["0.30", "1.10", "0.2456", "12.50", "1,234.50"]
