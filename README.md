@@ -6,8 +6,9 @@ OUTUS bills with every line explained.
 
 - **Implements:** OUTUS v1 (electricity). The spec is published separately; hems is one
   implementation of it.
-- **Python ≥ 3.11, no dependencies, no I/O.** Callers supply readings, prices and the plan,
-  and store the results.
+- **Python ≥ 3.11, no I/O.** One dependency, `tzdata`, so time zones work on any image.
+  Callers supply readings, prices and the plan, and store the results. I/O adapters (such as
+  Open-Meteo) are separate modules under `hems.adapters`.
 - **Used by:** the FranklinWH Direct Connect and Modbus bridges.
 
 | Module | Job |
@@ -19,6 +20,10 @@ OUTUS bills with every line explained.
 | `hems.plans` | checks a schema can't express (overlapping plans, wrong charge class, unpriced gaps) |
 | `hems.setup` | setup steps in order: site → meter → plan → tariffs |
 | `hems.profile_v1` | imports a `franklinwh-bridge/tariff-profile` v1 file as an OUTUS plan |
+| `hems.wear` | battery wear: warranty setup fields, wear cost per kWh, throughput pace budget, dispatch events, round-trip efficiency from SoC-matched cycles |
+| `hems.forecast` | solar (irradiance × kWp, cell temperature, self-calibration), the load model (calendar × season, comfort band, cold start), battery temperature limit, walk-forward backtest, HAEO publishing |
+| `hems.loads` | HEMS setup: always-on load and usage periods to confirm, heavy loads and EV charger checked against capabilities, expected hours, soak trigger |
+| `hems.adapters.open_meteo` | Open-Meteo forecast and archive: irradiance and temperature rows (does network I/O) |
 
 ```
 pip install -e ".[test]"
