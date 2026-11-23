@@ -22,7 +22,7 @@ OUTUS bills with every line explained.
 | `hems.profile_v1` | imports a `franklinwh-bridge/tariff-profile` v1 file as an OUTUS plan |
 | `hems.wear` | battery wear: warranty setup fields, wear cost per kWh, throughput pace budget, dispatch events, round-trip efficiency from SoC-matched cycles |
 | `hems.forecast` | solar (irradiance × kWp, cell temperature, self-calibration), the load model (calendar × season, comfort band, cold start), battery temperature limit, walk-forward backtest, HAEO publishing |
-| `hems.loads` | HEMS setup: always-on load and usage periods to confirm, heavy loads and EV charger checked against capabilities, expected hours, soak trigger |
+| `hems.loads` | HEMS setup: device types (value → label), always-on load and usage periods to confirm, heavy loads and EV charger checked against capabilities, expected hours, soak trigger |
 | `hems.adapters.open_meteo` | Open-Meteo forecast and archive: irradiance and temperature rows (does network I/O) |
 
 ```
