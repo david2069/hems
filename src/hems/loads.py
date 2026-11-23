@@ -31,6 +31,22 @@ CIRCUITS = ("smart_circuit", "controlled_load", "general")
 CONTROL_TYPES = ("deferrable", "sheddable", "soak")
 SWITCHES = ("smart_circuit", "ha_switch", "ha_climate", "ha_number")
 EV_CHARGER = "ev_charger"
+#: Device types: the stored value and the label a form shows. Only these are accepted;
+#: "other" covers anything not listed.
+DEVICE_TYPES = {
+    EV_CHARGER: "EV charger",
+    "hot_water": "Hot water",
+    "heat_pump": "Heat pump",
+    "air_conditioner": "Air conditioning",
+    "pool_pump": "Pool pump",
+    "spa": "Spa or hot tub",
+    "well_pump": "Well pump",
+    "dryer": "Clothes dryer",
+    "washing_machine": "Washing machine",
+    "dishwasher": "Dishwasher",
+    "oven": "Oven or cooktop",
+    "other": "Other",
+}
 EV_FIELDS = ("kw", "phases", "control_path", "arrival", "departure", "energy_needed_kwh")
 SOAK_TRIGGERS = ("export_price_at_or_below", "export_limited", "battery_full_exporting")
 _REQUIRED = {"deferrable": ("energy_kwh", "deadline"),
@@ -122,6 +138,8 @@ def check(load: dict, capabilities: set[str] | frozenset[str]) -> list[str]:
     out = []
     if not load.get("device_type"):
         out.append("device type: missing")
+    elif load["device_type"] not in DEVICE_TYPES:
+        out.append(f"device type: one of {', '.join(DEVICE_TYPES)}")
     m = load.get("measurement") or {}
     if m.get("kind") not in MEASUREMENTS:
         out.append(f"measurement: one of {', '.join(MEASUREMENTS)}")

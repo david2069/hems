@@ -103,3 +103,15 @@ def test_soak_triggers_and_quota():
     assert loads.soak(soak, battery_full_exporting=True)["on"] is True
     used = loads.soak(soak, export_price=-3.0, used_kwh=5.0)
     assert used["on"] is False and "quota" in used["why"]
+
+
+def test_device_types_are_a_fixed_list_with_labels():
+    assert loads.DEVICE_TYPES[loads.EV_CHARGER] == "EV charger"
+    assert loads.DEVICE_TYPES["pool_pump"] == "Pool pump"
+    assert "other" in loads.DEVICE_TYPES
+    assert all(k == k.lower() and " " not in k for k in loads.DEVICE_TYPES)
+    assert loads.check(POOL, {"smart_circuits"}) == []
+    probs = loads.check({**POOL, "device_type": "EV charger"}, {"smart_circuits"})
+    assert any(p.startswith("device type: one of") for p in probs)
+    assert any("missing" in p for p in loads.check({**POOL, "device_type": ""},
+                                                   {"smart_circuits"}))

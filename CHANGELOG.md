@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-11-24
+
+### Changed
+- `hems.loads.DEVICE_TYPES`: the device types as a fixed list, value → label (EV charger,
+  hot water, heat pump, air conditioning, pool pump, spa, well pump, dryer, washing machine,
+  dishwasher, oven, other). `check()` refuses any other value, so a typed "EV charger" no
+  longer silently loses the EV fields.
+
 ## [0.2.0] — 2026-11-17
 
 ### Added
