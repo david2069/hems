@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-11-24
+
+### Added
+- `hems.dispatch` (#612 §7, Smart Dispatch):
+  - `questions(plan)`: once a utility plan is entered, the user's target (`OBJECTIVES`:
+    Emergency Backup only, TOU, lowest cost including demand charges, self-consumption, most
+    export earnings), the SoC band for it, solar size, grid charging and export (allowed,
+    limited to a kW size, or prohibited), export from the battery, demand-peak shaving and an
+    export-penalty note. Only the questions the plan and site need; pre-filled answers are
+    "please confirm". `plan_facts`, `DEFAULTS` per target, `check`.
+  - `step_prices(plan, …)`: import price, export value (credits less export charges) and
+    demand rate per step, from the plan and a price series.
+  - `plan_24h(steps, battery, values)`: dynamic programming over SoC (1 % × 30 min) with
+    power limits, round trip, wear per kWh, the SoC band, grid-charge and export limits,
+    negative feed-in, the demand charge on the window's peak (lowest feasible cap searched),
+    Emergency Backup holding and filling first, off grid = no grid actions. Never worse than
+    self-consumption. Each step: action (`self`, `charge`, `discharge`, `hold`), kW, SoC,
+    grid flows, cost and reason; the result: cost, baseline, saving, value of stored energy,
+    cost per 10 %, assumptions.
+  - `decide(result, now)`: the action now, until when, its target SoC and why.
+
 ## [0.2.1] — 2026-11-24
 
 ### Changed
