@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-11-25
+
+### Added
+- `hems.forecast.predict_load(…, baseline_kwh=)`: where the model and the cold start have no
+  value for an hour, the hour-of-day median of the history (`method: hour_of_day`, from one
+  day of history), then `baseline_kwh`, e.g. the user's always-on load (`method: baseline`).
+  The model keeps the hour-of-day medians as `hourly`. Without either, kwh stays None.
+
 ## [0.3.0] — 2026-11-24
 
 ### Added

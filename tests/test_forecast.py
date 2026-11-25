@@ -104,6 +104,22 @@ def test_cold_start_is_the_weekday_hour_median_of_the_last_11_weeks():
     assert p2[0]["kwh"] == pytest.approx(0.5)
 
 
+def test_a_weekday_hour_with_no_history_falls_back_to_the_hour_of_day_median():
+    hist = [h for h in _history(1) if dt.datetime.fromtimestamp(h["start"], SYD).weekday() == 0]
+    m = forecast.fit_load(hist, tz=SYD)                   # one Monday only
+    p = forecast.predict_load(m, [{"start": ts(2026, 1, 15, 19), "temp_c": None}])  # Thursday
+    assert p[0]["method"] == "hour_of_day" and p[0]["kwh"] == pytest.approx(2.0)
+
+
+def test_with_no_history_at_all_the_baseline_is_used_and_said():
+    m = forecast.fit_load([], tz=SYD)
+    hrs = [{"start": ts(2026, 1, 15, 19), "temp_c": None}]
+    assert forecast.predict_load(m, hrs)[0] == {"start": hrs[0]["start"], "kwh": None,
+                                               "method": "cold_start"}
+    p = forecast.predict_load(m, hrs, baseline_kwh=0.6)
+    assert p[0]["method"] == "baseline" and p[0]["kwh"] == pytest.approx(0.6)
+
+
 def test_declared_loads_are_taken_out_of_the_base():
     hist = _history(12)
     pool = {h["start"]: 1.0 for h in hist
