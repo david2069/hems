@@ -9,7 +9,8 @@ walk-forward backtest and HAEO-format publishing.
   **directly** from its calendar and its forecast temperature, never from earlier
   predictions. With little history it degrades and says so: a thin season falls back to the
   day-type profile, and a short history to the cold start (the weekday-hour median of the
-  last 11 weeks). Declared loads are taken out of the base; they are modelled on their own.
+  last 11 weeks), then the hour-of-day median, then the caller's baseline (the always-on
+  load); each hour says which it used. Declared loads are taken out of the base; they are modelled on their own.
 - **Battery:** charge and discharge power limited by cabinet temperature, from a setup table
   until a reading proves it.
 
@@ -210,6 +211,18 @@ def _cold(rows: list[dict]) -> dict[str, float]:
     return {k: round(statistics.median(v), 4) for k, v in by.items()}
 
 
+def _hourly(rows: list[dict]) -> dict[str, float]:
+    """The hour-of-day median over the cold start's days: for a weekday-hour with no history."""
+    if not rows:
+        return {}
+    since = max(r["date"] for r in rows) - dt.timedelta(days=COLD_START_DAYS - 1)
+    by: dict[str, list[float]] = {}
+    for r in rows:
+        if r["date"] >= since:
+            by.setdefault(str(r["hour"]), []).append(r["kwh"])
+    return {k: round(statistics.median(v), 4) for k, v in by.items()}
+
+
 def fit_load(history: list[dict], *, tz: ZoneInfo, declared: list[dict] | None = None,
              is_holiday: Callable[[dt.date], bool] | None = None,
              min_days_per_cell: int = MIN_DAYS_PER_CELL) -> dict:
@@ -220,6 +233,7 @@ def fit_load(history: list[dict], *, tz: ZoneInfo, declared: list[dict] | None =
     dates = {r["date"] for r in rows}
     model: dict[str, Any] = {"schema_version": SCHEMA_VERSION, "tz": str(tz.key),
                              "history_days": len(dates), "cold": _cold(rows),
+                             "hourly": _hourly(rows),
                              "cells": {}, "pooled": {}, "comfort": None,
                              "heating_kwh_per_degree": 0.0, "cooling_kwh_per_degree": 0.0}
     model["degraded"] = len(dates) < MIN_HISTORY_DAYS
@@ -263,9 +277,12 @@ def fit_load(history: list[dict], *, tz: ZoneInfo, declared: list[dict] | None =
 
 
 def predict_load(model: dict, hours: list[dict],
-                 is_holiday: Callable[[dt.date], bool] | None = None) -> list[dict]:
+                 is_holiday: Callable[[dt.date], bool] | None = None, *,
+                 baseline_kwh: float | None = None) -> list[dict]:
     """kWh for each future hour ``{start, temp_c}``, directly from its calendar and forecast
-    temperature. ``method``: ``model``, or ``cold_start`` where the model has no cell."""
+    temperature. ``method``: ``model``; where the model has no cell, ``cold_start`` (the
+    weekday-hour median), else ``hour_of_day`` (the hour's median on any day), else
+    ``baseline`` (``baseline_kwh``, e.g. the user's always-on load); kwh None without any."""
     tz = ZoneInfo(model["tz"])
     c = model.get("comfort") or {}
     a, b = model["heating_kwh_per_degree"], model["cooling_kwh_per_degree"]
@@ -283,9 +300,13 @@ def predict_load(model: dict, hours: list[dict],
                 kwh = cell["p"] + a * _hd(t, c["low_c"]) + b * _cd(t, c["high_c"])
             out.append({"start": h["start"], "kwh": round(max(0.0, kwh), 4), "method": "model"})
             continue
-        v = model["cold"].get(f"{local.weekday()}:{local.hour}")
+        v, method = model["cold"].get(f"{local.weekday()}:{local.hour}"), "cold_start"
+        if v is None and (model.get("hourly") or {}).get(str(local.hour)) is not None:
+            v, method = model["hourly"][str(local.hour)], "hour_of_day"
+        elif v is None and baseline_kwh is not None:
+            v, method = baseline_kwh, "baseline"
         out.append({"start": h["start"], "kwh": None if v is None else round(v, 4),
-                    "method": "cold_start"})
+                    "method": method})
     return out
 
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hems"
-version = "0.3.0"
+version = "0.3.1"
 description = "An OUTUS v1 engine: plans, the usage ledger, dynamic prices and explainable bills; battery wear, forecasts and HEMS loads"
 readme = "README.md"
 license = "MIT"
