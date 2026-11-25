@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.3.2] — 2026-11-25
+
+### Added
+- `hems.loads`: a run window may carry `days`, weekday numbers with Monday = 0 (`DAYS` are
+  their labels); without it the window runs every day. `expected_hourly` follows them, with a
+  window's hours after midnight on the next day, and returns `{}` on a day the load doesn't
+  run. `check` reports bad `days`.
+
 ## [0.3.1] — 2026-11-25
 
 ### Added

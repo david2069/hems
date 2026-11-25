@@ -4,7 +4,7 @@ Setup is opt-in, with the notice below. Anything measurable is pre-filled from h
 marked "please confirm": the always-on load and the high, medium and low usage periods.
 Each heavy load says what it is, how it is measured (best first: an HA power entity, an HA
 energy entity, then nameplate kW), its power and/or duration, when it runs (or that it
-follows the weather), its circuit, and how it may be controlled:
+follows the weather; each run window may be limited to days of the week), its circuit, and how it may be controlled:
 
 - **deferrable:** energy by a deadline, minimum run, maximum starts, splittable or not;
 - **sheddable:** maximum off time, minimum on time, priority;
@@ -52,6 +52,10 @@ SOAK_TRIGGERS = ("export_price_at_or_below", "export_limited", "battery_full_exp
 _REQUIRED = {"deferrable": ("energy_kwh", "deadline"),
              "sheddable": ("max_off_min", "min_on_min", "priority"),
              "soak": ("quota_kwh", "price_penalty")}
+
+#: A run window's ``days``: weekday numbers, Monday = 0 (as ``date.weekday()``); these are
+#: their labels. No ``days``: every day.
+DAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
 #: The always-on load: the low end of the overnight hours.
 OVERNIGHT_HOURS = range(0, 6)
@@ -152,6 +156,12 @@ def check(load: dict, capabilities: set[str] | frozenset[str]) -> list[str]:
     ev = load.get("device_type") == EV_CHARGER
     if not ev and not load.get("runs"):
         out.append("when it runs: give its times, or that it follows the weather")
+    for w in load.get("runs") if isinstance(load.get("runs"), list) else []:
+        d = w.get("days") if isinstance(w, dict) else None
+        if d is not None and (not isinstance(d, list) or not d or not all(
+                isinstance(x, int) and 0 <= x <= 6 for x in d)):
+            out.append("days: weekday numbers 0 (Monday) to 6, at least one")
+            break
     if load.get("circuit") not in CIRCUITS:
         out.append(f"circuit: one of {', '.join(CIRCUITS)}")
     if ev:
@@ -188,14 +198,24 @@ def _hm(s: str) -> int:
 
 def expected_hourly(load: dict, day: dt.date, *, tz: ZoneInfo) -> dict[int, float] | None:
     """A scheduled load's kWh per hour on ``day`` (``{start: kwh}``), from its run windows and
-    power. None for a load that follows the weather or has no times."""
+    power; ``{}`` on a day none of its windows runs. A window with ``days`` runs on those
+    weekdays; its hours after midnight belong to the next day. None for a load that follows
+    the weather or has no times."""
     runs, kw = load.get("runs"), load.get("power_kw")
     if not isinstance(runs, list) or not runs or not kw:
         return None
+    today, yesterday = day.weekday(), (day.weekday() - 1) % 7
     minutes = [0.0] * 24
     for w in runs:
         a, b = _hm(w["start"]), _hm(w["end"])
-        spans = [(a, b)] if b > a else [(a, 1440), (0, b)]
+        days = w.get("days")
+
+        def on(wd, days=days):
+            return days is None or wd in days
+        if b > a:
+            spans = [(a, b)] if on(today) else []
+        else:
+            spans = ([(a, 1440)] if on(today) else []) + ([(0, b)] if on(yesterday) else [])
         for s, e in spans:
             for hr in range(24):
                 lo, hi = max(s, hr * 60), min(e, hr * 60 + 60)

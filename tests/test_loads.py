@@ -94,6 +94,26 @@ def test_expected_hours_for_a_scheduled_load():
     assert loads.expected_hourly(weather, day, tz=SYD) is None
 
 
+def test_a_run_window_can_be_limited_to_days_of_the_week():
+    # 2026-11-17 is a Tuesday (1); weekdays only, then Saturdays only
+    tue, sat = dt.date(2026, 11, 17), dt.date(2026, 11, 21)
+    wk = {**POOL, "runs": [{"start": "10:00", "end": "14:00", "days": [0, 1, 2, 3, 4]}]}
+    assert len(loads.expected_hourly(wk, tue, tz=SYD)) == 4
+    assert loads.expected_hourly(wk, sat, tz=SYD) == {}
+    assert loads.check(wk, {"smart_circuits"}) == []
+    # a window over midnight: its hours after midnight belong to the next day
+    ev = {**POOL, "runs": [{"start": "22:00", "end": "02:00", "days": [5]}]}
+    sat_hours = {dt.datetime.fromtimestamp(t, SYD).hour for t in loads.expected_hourly(ev, sat, tz=SYD)}
+    sun_hours = {dt.datetime.fromtimestamp(t, SYD).hour
+                 for t in loads.expected_hourly(ev, sat + dt.timedelta(days=1), tz=SYD)}
+    assert sat_hours == {22, 23} and sun_hours == {0, 1}
+    for bad in ([], [7], ["mon"], "weekdays"):
+        probs = loads.check({**POOL, "runs": [{"start": "10:00", "end": "14:00", "days": bad}]},
+                            {"smart_circuits"})
+        assert any("days" in p for p in probs), bad
+    assert loads.DAYS == ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+
 def test_soak_triggers_and_quota():
     soak = {"type": "soak", "export_price_at_or_below": 0.0, "quota_kwh": 5.0,
             "price_penalty": 2.0}
